@@ -1,32 +1,18 @@
-# --- 废案/备份文件夹 ---
-FileSwitcherRuby/
-
-# --- Maven 编译产物 ---
+# 编译产物 (必须过滤)
 target/
-*.jar
-*.war
-*.ear
-dependency-reduced-pom.xml
+*.class
 
-# --- IDE (VS Code / IntelliJ) 配置文件 ---
-.vscode/
+# IDE 配置文件 (建议过滤)
 .idea/
 *.iml
-*.iws
-*.ipr
+.project
 .settings/
-.project/
-.classpath/
-bin/
+.classpath
 
-# --- 本地运行生成的配置文件 ---
-sync_config.json
+# 系统与日志文件
 *.log
-
-# --- 系统文件 ---
 .DS_Store
 Thumbs.db
 
-# --- 打包工具产物 (Launch4j 等) ---
-*.exe
-*.l4j.xml
+# 临时打包产物
+dependency-reduced-pom.xml
