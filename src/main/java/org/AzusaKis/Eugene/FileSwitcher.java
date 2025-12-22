@@ -1,5 +1,6 @@
 package org.AzusaKis.Eugene;
 
+// --- 导入 UI、IO、JSON 以及线程相关库 ---
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -45,38 +46,47 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 
+/**
+ * FileSwitcher - 实时文件同步助手 基于 Java Swing + FlatLaf 构建，支持多语言、深色模式及 AppData 持久化配置
+ */
 public class FileSwitcher extends JFrame {
 
-    private final JTextField srcField;
-    private final JTextField dstField;
-    private final JTextArea logArea;
-    private final JLabel statusLabel;
-    private final JButton monitorBtn;
-    private final JComboBox<String> themeBox;
+    // --- UI 核心组件 ---
+    private final JTextField srcField;     // 显示源路径
+    private final JTextField dstField;     // 显示目标路径
+    private final JTextArea logArea;       // 日志打印区域
+    private final JLabel statusLabel;      // 底部状态文字（带圆点）
+    private final JButton monitorBtn;      // 启动/停止按钮
+    private final JComboBox<String> themeBox; // 主题选择下拉框
 
-    private volatile boolean monitoring = false;
-    private Thread monitorThread;
-    private int syncCount = 0;
+    // --- 同步逻辑变量 ---
+    private volatile boolean monitoring = false; // 线程开关标识
+    private Thread monitorThread;                // 后台监听线程
+    private int syncCount = 0;                   // 同步次数统计
 
-    // --- 配置文件路径配置（Windows 标准路径） ---
+    /**
+     * * 配置文件路径配置（Windows 标准路径） 存储在 %AppData%/FileSwitcher 目录下，避免在 C 盘根目录或
+     * Program Files 下产生权限报错
+     */
     private static final String APP_DATA_DIR = System.getenv("APPDATA") + File.separator + "FileSwitcher";
     private static final String CONFIG_PATH = APP_DATA_DIR + File.separator + "sync_config.json";
 
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final boolean isZH = Locale.getDefault().getLanguage().equals("zh");
-    private final String FONT_FAMILY = "Microsoft YaHei";
+    private final ObjectMapper mapper = new ObjectMapper(); // JSON 解析引擎
+    private final boolean isZH = Locale.getDefault().getLanguage().equals("zh"); // 系统语言判断
+    private final String FONT_FAMILY = "Microsoft YaHei"; // 预设中文字体
 
     public FileSwitcher() {
-        // 1. 初始化检查：确保 AppData 里的文件夹存在
+        // 1. 初始化检查：确保配置文件夹存在
         ensureConfigDirExists();
 
-        // 2. 窗口基本设置
+        // 2. 窗口基础属性
         setTitle("FileSwitcher");
         setSize(850, 680);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
+        setLocationRelativeTo(null); // 窗口居中
 
         // 3. UI 布局初始化
+        // 使用 BorderLayout 配合 EmptyBorder 产生四周留白效果
         JPanel root = new JPanel(new BorderLayout(25, 25));
         root.setBorder(new EmptyBorder(30, 35, 30, 35));
         add(root);
@@ -103,8 +113,10 @@ public class FileSwitcher extends JFrame {
         topPanel.add(themeWrapper, BorderLayout.EAST);
         root.add(topPanel, BorderLayout.NORTH);
 
-        // --- 中间区域 (路径选择 + 日志) ---
+        // --- 中间区域 (路径选择表单 + 日志容器) ---
         JPanel centerPanel = new JPanel(new BorderLayout(0, 25));
+
+        // 路径选择表单 (使用 GridBagLayout 保证拉伸效果)
         JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -116,6 +128,7 @@ public class FileSwitcher extends JFrame {
         addRow(formPanel, getStr("目标文件路径", "Target Path"), dstField, gbc, 2);
         centerPanel.add(formPanel, BorderLayout.NORTH);
 
+        // 日志显示区域 (带 TitledBorder 边框)
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setFont(new Font(FONT_FAMILY, Font.PLAIN, 14));
@@ -129,7 +142,7 @@ public class FileSwitcher extends JFrame {
         centerPanel.add(scrollPane, BorderLayout.CENTER);
         root.add(centerPanel, BorderLayout.CENTER);
 
-        // --- 底部栏 (状态 + 控制按钮) ---
+        // --- 底部栏 (状态文字 + 巨型启动按钮) ---
         JPanel footer = new JPanel(new BorderLayout());
         statusLabel = new JLabel(getStr("● 系统就绪", "● Ready"));
         statusLabel.setFont(new Font(FONT_FAMILY, Font.PLAIN, 14));
@@ -139,7 +152,7 @@ public class FileSwitcher extends JFrame {
         monitorBtn.setFont(new Font(FONT_FAMILY, Font.BOLD, 18));
         monitorBtn.setPreferredSize(new Dimension(220, 55));
         monitorBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        monitorBtn.setBackground(new Color(0, 120, 215));
+        monitorBtn.setBackground(new Color(0, 120, 215)); // 初始蓝色
         monitorBtn.setForeground(Color.WHITE);
         monitorBtn.addActionListener(e -> toggleMonitoring());
 
@@ -147,10 +160,13 @@ public class FileSwitcher extends JFrame {
         footer.add(monitorBtn, BorderLayout.EAST);
         root.add(footer, BorderLayout.SOUTH);
 
-        // 4. 加载持久化配置
+        // 4. 加载持久化配置 (路径、主题)
         loadConfig();
     }
 
+    /**
+     * 确保 AppData 文件夹存在，防止首次运行保存失败
+     */
     private void ensureConfigDirExists() {
         File dir = new File(APP_DATA_DIR);
         if (!dir.exists()) {
@@ -158,15 +174,18 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 应用 FlatLaf 主题并开启平滑过渡动画
+     */
     private void applyTheme(int index, boolean save) {
-        FlatAnimatedLafChange.showSnapshot();
+        FlatAnimatedLafChange.showSnapshot(); // 记录当前界面快照用于渐变
         try {
             switch (index) {
                 case 1 ->
                     UIManager.setLookAndFeel(new FlatLightLaf());
                 case 2 ->
                     UIManager.setLookAndFeel(new FlatDarkLaf());
-                default -> {
+                default -> { // 跟随系统：检测 Windows 注册表
                     if (isWindowsDarkTheme()) {
                         UIManager.setLookAndFeel(new FlatDarkLaf());
                     } else {
@@ -174,10 +193,10 @@ public class FileSwitcher extends JFrame {
                     }
                 }
             }
-            FlatAnimatedLafChange.hideSnapshotWithAnimation();
-            SwingUtilities.updateComponentTreeUI(this);
+            FlatAnimatedLafChange.hideSnapshotWithAnimation(); // 执行动画
+            SwingUtilities.updateComponentTreeUI(this); // 刷新全局组件
             if (save) {
-                saveConfig();
+                saveConfig(); // 持久化主题选择
             }
         } catch (UnsupportedLookAndFeelException ex) {
             try {
@@ -187,6 +206,9 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 通过命令行查询注册表，判断 Windows 10/11 是否处于深色模式
+     */
     private boolean isWindowsDarkTheme() {
         try {
             Process process = Runtime.getRuntime().exec("reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\" /v AppsUseLightTheme");
@@ -196,7 +218,7 @@ public class FileSwitcher extends JFrame {
                     if (line.contains("AppsUseLightTheme")) {
                         String[] parts = line.split("    ");
                         String value = parts[parts.length - 1].trim();
-                        return "0x0".equals(value) || "0".equals(value);
+                        return "0x0".equals(value) || "0".equals(value); // 0 代表深色
                     }
                 }
             }
@@ -206,10 +228,16 @@ public class FileSwitcher extends JFrame {
         return false;
     }
 
+    /**
+     * 简单的多语言工具函数
+     */
     private String getStr(String zh, String en) {
         return isZH ? zh : en;
     }
 
+    /**
+     * 表单行构建辅助方法
+     */
     private void addRow(JPanel p, String labelText, JTextField field, GridBagConstraints gbc, int y) {
         gbc.gridy = y;
         gbc.gridx = 0;
@@ -234,6 +262,9 @@ public class FileSwitcher extends JFrame {
         gbc.insets = new Insets(10, 0, 10, 0);
     }
 
+    /**
+     * 创建统一样式的路径文本框（不可手动输入）
+     */
     private JTextField createStyledField() {
         JTextField f = new JTextField();
         f.setEditable(false);
@@ -242,6 +273,9 @@ public class FileSwitcher extends JFrame {
         return f;
     }
 
+    /**
+     * 从 AppData 读取并应用配置
+     */
     private void loadConfig() {
         File f = new File(CONFIG_PATH);
         if (!f.exists()) {
@@ -261,6 +295,9 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 将当前路径和主题保存到 AppData
+     */
     private void saveConfig() {
         try {
             ensureConfigDirExists();
@@ -274,6 +311,9 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 打开 AWT 原生文件选择器（比 Swing 默认选择器更符合 Windows 系统外观）
+     */
     private void openFilePicker(JTextField field) {
         FileDialog fd = new FileDialog(this, getStr("选择文件", "Select File"), FileDialog.LOAD);
         if (!field.getText().isEmpty()) {
@@ -291,6 +331,9 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 开启或停止监控的切换逻辑
+     */
     private void toggleMonitoring() {
         if (monitoring) {
             stopMonitoring();
@@ -299,27 +342,33 @@ public class FileSwitcher extends JFrame {
         }
     }
 
+    /**
+     * 启动监控线程：核心逻辑
+     */
     private void startSync() {
         String s = srcField.getText();
         String d = dstField.getText();
         if (s.isEmpty() || d.isEmpty()) {
             return;
         }
+
         monitoring = true;
         monitorBtn.setText(getStr("停止同步", "Stop Sync"));
-        monitorBtn.setBackground(new Color(220, 53, 69));
+        monitorBtn.setBackground(new Color(220, 53, 69)); // 停止状态设为红色
         statusLabel.setText(getStr("● 监控中", "● Monitoring"));
-        statusLabel.setForeground(new Color(40, 167, 69));
+        statusLabel.setForeground(new Color(40, 167, 69)); // 活跃状态设为绿色
 
+        // 启动后台线程执行文件轮询，避免阻塞 UI 界面
         monitorThread = new Thread(() -> {
             Path sp = Paths.get(s);
             Path dp = Paths.get(d);
-            long lastMod = sp.toFile().lastModified();
+            long lastMod = sp.toFile().lastModified(); // 记录初始修改时间
             appendLog("SYSTEM", getStr("同步已开启...", "Sync active..."));
 
             while (monitoring && !Thread.currentThread().isInterrupted()) {
                 try {
                     long currentMod = sp.toFile().lastModified();
+                    // 如果源文件时间戳变大，执行覆盖操作
                     if (currentMod > lastMod) {
                         Files.copy(sp, dp, StandardCopyOption.REPLACE_EXISTING);
                         lastMod = currentMod;
@@ -330,7 +379,7 @@ public class FileSwitcher extends JFrame {
                                 : String.format("%.2f KB", bytes / 1024.0);
                         appendLog("SYNC", String.format(getStr("同步成功 (#%d) | 大小: %s", "Success (#%d) | Size: %s"), syncCount, sizeStr));
                     }
-                    TimeUnit.SECONDS.sleep(1);
+                    TimeUnit.SECONDS.sleep(1); // 每秒检查一次
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                     break;
@@ -344,34 +393,46 @@ public class FileSwitcher extends JFrame {
         monitorThread.start();
     }
 
+    /**
+     * 停止线程并重置 UI 样式
+     */
     private void stopMonitoring() {
         monitoring = false;
         if (monitorThread != null) {
             monitorThread.interrupt();
         }
         monitorBtn.setText(getStr("开启实时同步", "Start Sync"));
-        monitorBtn.setBackground(new Color(0, 120, 215));
+        monitorBtn.setBackground(new Color(0, 120, 215)); // 恢复蓝色
         statusLabel.setText(getStr("● 已停止", "● Stopped"));
         statusLabel.setForeground(Color.GRAY);
         appendLog("SYSTEM", getStr("同步已停止。", "Sync stopped."));
     }
 
+    /**
+     * 安全地向日志区追加文字 使用 SwingUtilities.invokeLater 确保在 UI 线程执行更新，防止多线程崩溃
+     */
     private void appendLog(String tag, String msg) {
         String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         SwingUtilities.invokeLater(() -> {
             logArea.append(String.format("[%s] [%s] %s\n", now, tag, msg));
-            logArea.setCaretPosition(logArea.getDocument().getLength());
+            logArea.setCaretPosition(logArea.getDocument().getLength()); // 自动滚屏到最下方
         });
     }
 
+    /**
+     * 程序入口
+     */
     public static void main(String[] args) {
-        // 设置渲染属性，防止 AWT 组件背景闪烁
+        // 设置系统属性：优化 AWT/Swing 在高分屏下的表现
         System.setProperty("sun.awt.noerasebackground", "true");
 
+        // 初始化 FlatLaf 皮肤
         FlatLightLaf.setup();
+        // 设置全局组件圆角弧度（更现代的视觉效果）
         UIManager.put("Button.arc", 15);
         UIManager.put("Component.arc", 15);
 
+        // 在 EDT 线程启动窗口
         SwingUtilities.invokeLater(() -> {
             FileSwitcher frame = new FileSwitcher();
             frame.setVisible(true);

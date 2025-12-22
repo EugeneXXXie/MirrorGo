@@ -1,13 +1,32 @@
-# --- Maven 临时及产物 ---
+# --- 废案/备份文件夹 ---
+FileSwitcherRuby/
+
+# --- Maven 编译产物 ---
 target/
 *.jar
-# 屏蔽生成的精简版 POM
+*.war
+*.ear
 dependency-reduced-pom.xml
 
-# --- IDE 及项目配置 ---
+# --- IDE (VS Code / IntelliJ) 配置文件 ---
 .vscode/
 .idea/
 *.iml
+*.iws
+*.ipr
+.settings/
+.project/
+.classpath/
+bin/
 
-# --- 本地配置 ---
+# --- 本地运行生成的配置文件 ---
 sync_config.json
+*.log
+
+# --- 系统文件 ---
+.DS_Store
+Thumbs.db
+
+# --- 打包工具产物 (Launch4j 等) ---
+*.exe
+*.l4j.xml
