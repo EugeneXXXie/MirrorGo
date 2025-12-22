@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.AzusaKis.Eugene</groupId>
-    <artifactId>FileSwitcher</artifactId>
+    <groupId>org.AzusaKis.MirrorGo</groupId>
+    <artifactId>MirrorGo</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -44,6 +44,7 @@
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
                     <encoding>UTF-8</encoding>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                 </configuration>
             </plugin>
 
@@ -52,7 +53,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>org.AzusaKis.Eugene.FileSwitcher</mainClass>
+                    <mainClass>org.AzusaKis.MirrorGo.MirrorGo</mainClass>
                 </configuration>
             </plugin>
 
@@ -63,13 +64,13 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.AzusaKis.Eugene.FileSwitcher</mainClass>
+                            <mainClass>org.AzusaKis.MirrorGo.MirrorGo</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <finalName>FileSwitcher</finalName>
+                    <finalName>MirrorGo</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>
