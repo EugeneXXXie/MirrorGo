@@ -1,0 +1,13 @@
+# --- Maven 临时及产物 ---
+target/
+*.jar
+# 屏蔽生成的精简版 POM
+dependency-reduced-pom.xml
+
+# --- IDE 及项目配置 ---
+.vscode/
+.idea/
+*.iml
+
+# --- 本地配置 ---
+sync_config.json
